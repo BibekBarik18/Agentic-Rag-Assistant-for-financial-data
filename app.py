@@ -1,11 +1,14 @@
 import streamlit as st
-import asyncio
+# import asyncio
+import requests
 import tempfile
 import os
 from dotenv import load_dotenv
-from final import graph  # <-- replace with your file name (without .py extension)
+# from final import graph  
 
 load_dotenv()
+
+config = {"configurable": {"thread_id": "1"}}
 
 st.set_page_config(page_title="RAG Agent", layout="wide")
 st.title("Agentic RAG Assistant for finance data")
@@ -13,6 +16,8 @@ st.title("Agentic RAG Assistant for finance data")
 # Initialize session state
 if "messages" not in st.session_state:
     st.session_state.messages = []
+if "config" not in st.session_state:
+    st.session_state.config = config
 
 # Display chat history
 for message in st.session_state.messages:
@@ -40,22 +45,33 @@ if query:
     # Prepare state for LangGraph
     if uploaded_file:
         init_state = {
-            "messages": [{"role": "user", "content": temp_file_path}],
+            "messages":temp_file_path,
             "query": query,
             "docs_present": True
         }
     else:
         init_state = {
+            "messages":"",
             "query": query,
             "docs_present": False
         }
 
     # Run the LangGraph pipeline
-    state = asyncio.run(graph.ainvoke(init_state))
+    # state = asyncio.run(graph.ainvoke(init_state,config=st.session_state.config))
 
-    # Get the assistant's reply
-    response = state["messages"][-1].content
-    st.chat_message("assistant").markdown(response)
+    # # Get the assistant's reply
+    # response = state["messages"][-1].content
+
+    API_URL="http://127.0.0.1:8001/chat"
+
+    response=requests.post(API_URL,json=init_state)
+    # json_data = response.json()
+    if response.status_code==200:
+        response=response.json()
+        st.chat_message("assistant").markdown(response)
+    # else:
+    #     print(json_data)
+    #     st.chat_message("assistant").markdown(json_data)
     st.session_state.messages.append({"role": "assistant", "content": response})
     if uploaded_file:
         os.remove(temp_file_path)
